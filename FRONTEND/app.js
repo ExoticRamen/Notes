@@ -1,5 +1,5 @@
 const API_URL = 'https://notes-8v41.onrender.com/api/notes';
-
+const searchInput = document.getElementById('searchInput');
 // DOM Elements
 const noteForm = document.getElementById('noteForm');
 const notesList = document.getElementById('notesList');
@@ -48,14 +48,15 @@ async function fetchNotes() {
 }
 
 // --- 2. Draw Sidebar ---
-function renderSidebar() {
+// Notice we added "notesToDisplay = allNotes" inside the parentheses 
+function renderSidebar(notesToDisplay = allNotes) {
     notesList.innerHTML = '';
 
-    allNotes.forEach(note => {
+    // Changed allNotes.forEach to notesToDisplay.forEach
+    notesToDisplay.forEach(note => {
         const sidebarItem = document.createElement('div');
         const isSelected = note._id === currentEditId;
         
-        // Premium Dark Mode highlight colors
         sidebarItem.className = `p-4 rounded-xl cursor-pointer mb-1 transition-colors duration-200 border-b border-[#333336]/30 ${isSelected ? 'bg-[#2c2c2e]' : 'hover:bg-[#2c2c2e] bg-transparent'}`;
         
         const snippet = note.Document.length > 35 ? note.Document.substring(0, 35) + '...' : note.Document;
@@ -163,5 +164,18 @@ noteForm.addEventListener('submit', async (e) => {
         console.error('Error saving note:', error);
     }
 });
-
+// --- Search Logic ---
+searchInput.addEventListener('input', (e) => {
+    // 1. Grab what you typed and make it lowercase
+    const searchTerm = e.target.value.toLowerCase();
+    
+    // 2. Filter the array to see if the title OR document contains your text
+    const filteredNotes = allNotes.filter(note => 
+        note.Title.toLowerCase().includes(searchTerm) || 
+        note.Document.toLowerCase().includes(searchTerm)
+    );
+    
+    // 3. Re-draw the sidebar with only the matches!
+    renderSidebar(filteredNotes);
+});
 fetchNotes();
