@@ -9,6 +9,17 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        @keyframes slideInLeft {
+            from { transform: translateX(-30%); }
+            to { transform: translateX(0); }
+        }
+        .slide-in-right { animation: slideInRight 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+        .slide-in-left { animation: slideInLeft 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
     </style>
 </head>
 <body class="h-screen w-screen flex overflow-hidden bg-black text-white selection:bg-yellow-500/30">
@@ -25,13 +36,14 @@
         </div>
 
         <div class="px-4 pb-3">
-            <div class="bg-[#2c2c2e] rounded-lg p-2 flex items-center text-gray-400">
+            <div class="bg-[#2c2c2e] rounded-lg p-2 flex items-center text-gray-400 focus-within:ring-1 focus-within:ring-yellow-500 transition">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-<input type="text" id="searchInput" placeholder="Search" class="bg-transparent outline-none w-full text-white placeholder-gray-500 text-sm">            </div>
+                <input type="text" id="searchInput" placeholder="Search" class="bg-transparent outline-none w-full text-white placeholder-gray-500 text-sm">            
+            </div>
         </div>
         
         <div id="notesList" class="flex-1 overflow-y-auto px-3 pb-3 space-y-1 mt-2 no-scrollbar">
-        </div>
+            </div>
     </aside>
 
     <main id="editorPane" class="w-full flex-1 hidden md:flex flex-col h-full bg-black relative">
@@ -51,15 +63,25 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                     </button>
-                    <button type="submit" id="saveBtn" class="text-yellow-500 font-semibold hover:text-yellow-400 transition text-lg tracking-wide">
+                    <button type="submit" id="saveBtn" class="text-yellow-500 font-semibold hover:text-yellow-400 transition text-lg tracking-wide hidden md:block">
                         Done
                     </button>
                 </div>
             </div>
 
-            <div class="flex-1 flex flex-col px-6 md:px-12 lg:px-16 pb-10 w-full">
-                <p id="dateDisplay" class="text-left text-xs text-gray-500 mb-6 font-medium tracking-wider uppercase"></p>
-<input type="text" id="titleInput" placeholder="Title" class="text-3xl md:text-4xl font-bold mb-4 pb-2 leading-normal overflow-visible outline-none bg-transparent text-white w-full placeholder-gray-600" required autocomplete="off">                <textarea id="documentInput" placeholder="Start typing..." class="flex-1 resize-none outline-none bg-transparent text-lg md:text-xl text-gray-300 w-full leading-relaxed placeholder-gray-600" required></textarea>
+            <div class="flex-1 flex flex-col px-6 md:px-12 lg:px-16 pb-6 w-full max-h-full overflow-hidden">
+                
+                <div class="flex justify-between items-center text-xs text-gray-500 mb-4 font-medium tracking-wider uppercase">
+                    <p id="dateDisplay"></p>
+                    <p id="statusDisplay" class="text-yellow-600/80 transition-opacity duration-300 opacity-0">All changes saved</p>
+                </div>
+                
+                <input type="text" id="titleInput" placeholder="Title" class="text-3xl md:text-4xl font-bold mb-4 pb-2 leading-normal overflow-visible outline-none bg-transparent text-white w-full placeholder-gray-600" required autocomplete="off">                
+                <textarea id="documentInput" placeholder="Start typing..." class="flex-1 resize-none outline-none bg-transparent text-lg md:text-xl text-gray-300 w-full leading-relaxed placeholder-gray-600 no-scrollbar" required></textarea>
+                
+                <div class="mt-4 flex justify-end">
+                    <span id="wordCountDisplay" class="text-xs text-gray-600 font-medium">0 words</span>
+                </div>
             </div>
         </form>
     </main>
