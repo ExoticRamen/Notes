@@ -1,4 +1,4 @@
-const API_URL = 'https://notes-8v41.onrender.com/';
+const API_URL = 'https://notes-8v41.onrender.com/api/notes';
 
 // DOM Elements
 const noteForm = document.getElementById('noteForm');
