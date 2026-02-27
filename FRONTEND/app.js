@@ -1,36 +1,138 @@
+// --- APIs ---
 const API_URL = 'https://notes-8v41.onrender.com/api/notes';
+const AUTH_URL = 'https://notes-8v41.onrender.com/api/auth';
 
-// DOM Elements
+// --- DOM Elements ---
 const searchInput = document.getElementById('searchInput');
 const noteForm = document.getElementById('noteForm');
 const notesList = document.getElementById('notesList');
 const titleInput = document.getElementById('titleInput');
 const documentInput = document.getElementById('documentInput');
 const dateDisplay = document.getElementById('dateDisplay');
-const statusDisplay = document.getElementById('statusDisplay'); // NEW
-const wordCountDisplay = document.getElementById('wordCountDisplay'); // NEW
+const statusDisplay = document.getElementById('statusDisplay');
+const wordCountDisplay = document.getElementById('wordCountDisplay');
 const newNoteBtn = document.getElementById('newNoteBtn');
 const deleteBtn = document.getElementById('deleteBtn');
 const sidebar = document.getElementById('sidebar');
 const editorPane = document.getElementById('editorPane');
 const backBtn = document.getElementById('backBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+
+// Auth DOM Elements
+const authScreen = document.getElementById('authScreen');
+const authForm = document.getElementById('authForm');
+const emailInput = document.getElementById('emailInput');
+const passwordInput = document.getElementById('passwordInput');
+const authTitle = document.getElementById('authTitle');
+const authSubtitle = document.getElementById('authSubtitle');
+const authSubmitBtn = document.getElementById('authSubmitBtn');
+const authToggleBtn = document.getElementById('authToggleBtn');
+const authToggleText = document.getElementById('authToggleText');
+const authError = document.getElementById('authError');
 
 let allNotes = [];
 let currentEditId = null;
-let autoSaveTimeout = null; // Keeps track of our typing timer
+let autoSaveTimeout = null;
+let isLoginMode = true; // Tracks if we are logging in or signing up
 
-// --- UI Helpers ---
-function updateWordCount() {
-    const text = documentInput.value.trim();
-    const words = text ? text.split(/\s+/).length : 0;
-    const chars = text.length;
-    wordCountDisplay.innerText = `${words} word${words !== 1 ? 's' : ''} | ${chars} char${chars !== 1 ? 's' : ''}`;
+// --- Security Helper ---
+// Automatically attaches the VIP wristband to requests
+function getHeaders() {
+    const token = localStorage.getItem('token');
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+    };
 }
 
-function setStatus(text, show = true) {
-    statusDisplay.innerText = text;
-    statusDisplay.style.opacity = show ? '1' : '0';
+// --- Auth Logic ---
+function checkAuth() {
+    const token = localStorage.getItem('token');
+    if (token) {
+        // Logged in! Hide auth screen and load private notes
+        authScreen.classList.add('hidden');
+        fetchNotes();
+    } else {
+        // Not logged in! Show auth screen
+        authScreen.classList.remove('hidden');
+        authScreen.classList.add('flex');
+    }
 }
+
+authToggleBtn.onclick = () => {
+    isLoginMode = !isLoginMode;
+    authError.classList.add('hidden');
+    if (isLoginMode) {
+        authTitle.innerText = "Welcome back";
+        authSubtitle.innerText = "Sign in to your private notes";
+        authSubmitBtn.innerText = "Login";
+        authToggleText.innerText = "Don't have an account?";
+        authToggleBtn.innerText = "Sign up";
+    } else {
+        authTitle.innerText = "Create Account";
+        authSubtitle.innerText = "Start securing your notes";
+        authSubmitBtn.innerText = "Sign Up";
+        authToggleText.innerText = "Already have an account?";
+        authToggleBtn.innerText = "Login";
+    }
+};
+
+authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    authError.classList.add('hidden');
+    authSubmitBtn.innerText = "Please wait...";
+
+    const endpoint = isLoginMode ? '/login' : '/register';
+    const payload = {
+        email: emailInput.value,
+        password: passwordInput.value
+    };
+
+    try {
+        const response = await fetch(`${AUTH_URL}${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "Authentication failed");
+        }
+
+        if (isLoginMode) {
+            // Save token and jump into the app!
+            localStorage.setItem('token', data.token);
+            emailInput.value = '';
+            passwordInput.value = '';
+            checkAuth();
+        } else {
+            // Signed up successfully! Swap to login mode automatically
+            authToggleBtn.click();
+            authError.classList.remove('hidden');
+            authError.classList.remove('text-red-500');
+            authError.classList.add('text-green-500');
+            authError.innerText = "Account created! You can now log in.";
+        }
+    } catch (error) {
+        authError.classList.remove('hidden', 'text-green-500');
+        authError.classList.add('text-red-500');
+        authError.innerText = error.message;
+    } finally {
+        authSubmitBtn.innerText = isLoginMode ? "Login" : "Sign Up";
+    }
+});
+
+logoutBtn.onclick = () => {
+    localStorage.removeItem('token');
+    allNotes = [];
+    renderSidebar();
+    currentEditId = null;
+    titleInput.value = '';
+    documentInput.value = '';
+    checkAuth();
+};
 
 // --- Mobile Navigation Logic ---
 function showEditorMobile() {
@@ -49,26 +151,37 @@ function showSidebarMobile() {
 
 backBtn.onclick = showSidebarMobile;
 
-// --- Fetch & Display ---
+// --- UI Helpers ---
+function updateWordCount() {
+    const text = documentInput.value.trim();
+    const words = text ? text.split(/\s+/).length : 0;
+    const chars = text.length;
+    wordCountDisplay.innerText = `${words} word${words !== 1 ? 's' : ''} | ${chars} char${chars !== 1 ? 's' : ''}`;
+}
+
+function setStatus(text, show = true) {
+    statusDisplay.innerText = text;
+    statusDisplay.style.opacity = show ? '1' : '0';
+}
+
+// --- CRUD Operations (NOW SECURED) ---
 async function fetchNotes(skipSidebarRender = false) {
     try {
-        const response = await fetch(API_URL);
+        const response = await fetch(API_URL, { headers: getHeaders() });
+        if (!response.ok) throw new Error("Unauthorized");
+        
         allNotes = await response.json();
         allNotes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
         
-        // Sometimes we fetch data in the background and don't want to steal the user's focus
-        if (!skipSidebarRender) {
-            renderSidebar();
-        }
+        if (!skipSidebarRender) renderSidebar();
     } catch (error) {
         console.error('Error fetching notes:', error);
+        if (error.message === "Unauthorized") logoutBtn.click(); // Kick them out if token expired
     }
 }
 
-// --- Draw Sidebar ---
 function renderSidebar(notesToDisplay = allNotes) {
     notesList.innerHTML = '';
-
     if (notesToDisplay.length === 0) {
         notesList.innerHTML = `<div class="text-center text-gray-500 mt-10 text-sm">No notes found.</div>`;
         return;
@@ -77,7 +190,6 @@ function renderSidebar(notesToDisplay = allNotes) {
     notesToDisplay.forEach(note => {
         const sidebarItem = document.createElement('div');
         const isSelected = note._id === currentEditId;
-        
         sidebarItem.className = `p-4 rounded-xl cursor-pointer mb-1 transition-all duration-200 border-b border-[#333336]/30 ${isSelected ? 'bg-[#2c2c2e]' : 'hover:bg-[#2c2c2e] bg-transparent'}`;
         
         const snippet = note.Document.length > 35 ? note.Document.substring(0, 35) + '...' : note.Document;
@@ -90,13 +202,11 @@ function renderSidebar(notesToDisplay = allNotes) {
                 <span class="text-gray-400 truncate">${snippet || 'No additional text'}</span>
             </div>
         `;
-        
         sidebarItem.onclick = () => loadNote(note._id);
         notesList.appendChild(sidebarItem);
     });
 }
 
-// --- Load Note ---
 function loadNote(id) {
     const noteToEdit = allNotes.find(note => note._id === id);
     if (!noteToEdit) return;
@@ -108,7 +218,6 @@ function loadNote(id) {
     const dateStr = noteToEdit.updatedAt ? new Date(noteToEdit.updatedAt).toLocaleString(undefined, { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric' }) : '';
     dateDisplay.innerText = dateStr;
     setStatus('', false);
-
     updateWordCount();
     deleteBtn.classList.remove('hidden');
     renderSidebar(); 
@@ -116,7 +225,6 @@ function loadNote(id) {
     if (window.innerWidth < 768) showEditorMobile();
 }
 
-// --- New Note ---
 newNoteBtn.onclick = () => {
     currentEditId = null;
     titleInput.value = '';
@@ -125,19 +233,20 @@ newNoteBtn.onclick = () => {
     setStatus('', false);
     updateWordCount();
     deleteBtn.classList.add('hidden'); 
-    
     renderSidebar(); 
     if (window.innerWidth < 768) showEditorMobile();
     titleInput.focus();
 };
 
-// --- Delete ---
 deleteBtn.onclick = async () => {
     if (!currentEditId) return;
     if (!confirm("Delete this note?")) return;
 
     try {
-        await fetch(`${API_URL}/${currentEditId}`, { method: 'DELETE' });
+        await fetch(`${API_URL}/${currentEditId}`, { 
+            method: 'DELETE',
+            headers: getHeaders() // Security Wristband
+        });
         
         currentEditId = null;
         titleInput.value = '';
@@ -151,11 +260,8 @@ deleteBtn.onclick = async () => {
     }
 };
 
-// --- REAL-TIME & AUTO-SAVE LOGIC ---
 async function saveToDatabase() {
-    // Don't save if both are completely empty
     if (titleInput.value.trim() === '' && documentInput.value.trim() === '') return;
-
     setStatus('Saving...', true);
 
     const noteData = {
@@ -167,26 +273,22 @@ async function saveToDatabase() {
         if (currentEditId) {
             await fetch(`${API_URL}/${currentEditId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getHeaders(), // Security Wristband
                 body: JSON.stringify(noteData)
             });
         } else {
             const response = await fetch(API_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getHeaders(), // Security Wristband
                 body: JSON.stringify(noteData)
             });
             const savedNote = await response.json();
             currentEditId = savedNote._id; 
-            deleteBtn.classList.remove('hidden'); // Show delete button since it's now saved
+            deleteBtn.classList.remove('hidden'); 
         }
 
         setStatus('All changes saved', true);
-        
-        // Hide the status text slowly after 2 seconds
         setTimeout(() => setStatus('', false), 2000);
-
-        // Fetch new data quietly in the background so dates are perfectly accurate
         fetchNotes(true); 
 
     } catch (error) {
@@ -195,11 +297,8 @@ async function saveToDatabase() {
     }
 }
 
-// Listen to every single keystroke in the title and body
 function handleInputChanges() {
     updateWordCount();
-    
-    // 1. Live Sidebar Sync: Instantly update the array in memory so the sidebar looks fast
     if (currentEditId) {
         const localNote = allNotes.find(n => n._id === currentEditId);
         if (localNote) {
@@ -208,28 +307,21 @@ function handleInputChanges() {
             renderSidebar();
         }
     }
-
-    // 2. Auto-Save Debounce: Reset the 1-second timer every time they hit a key
     clearTimeout(autoSaveTimeout);
     setStatus('Typing...', true);
-    
-    autoSaveTimeout = setTimeout(() => {
-        saveToDatabase();
-    }, 1000); // 1000 ms = 1 second of no typing triggers the save
+    autoSaveTimeout = setTimeout(() => saveToDatabase(), 1000);
 }
 
 titleInput.addEventListener('input', handleInputChanges);
 documentInput.addEventListener('input', handleInputChanges);
 
-// The manual "Done" button now just triggers the save immediately and closes mobile view
 noteForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    clearTimeout(autoSaveTimeout); // Stop the auto-save from running twice
+    clearTimeout(autoSaveTimeout); 
     await saveToDatabase();
     if (window.innerWidth < 768) showSidebarMobile();
 });
 
-// --- Search Logic ---
 searchInput.addEventListener('input', (e) => {
     const searchTerm = e.target.value.toLowerCase();
     const filteredNotes = allNotes.filter(note => 
@@ -239,32 +331,20 @@ searchInput.addEventListener('input', (e) => {
     renderSidebar(filteredNotes);
 });
 
-// --- Native Swipe Gestures ---
-let touchStartX = 0;
-let touchEndX = 0;
-const SWIPE_THRESHOLD = 75; 
-
-document.addEventListener('touchstart', e => {
-    touchStartX = e.changedTouches[0].screenX;
-}, { passive: true });
-
-document.addEventListener('touchend', e => {
-    touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
-}, { passive: true });
+// --- Swipe Gestures ---
+let touchStartX = 0; let touchEndX = 0; const SWIPE_THRESHOLD = 75; 
+document.addEventListener('touchstart', e => touchStartX = e.changedTouches[0].screenX, { passive: true });
+document.addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; handleSwipe(); }, { passive: true });
 
 function handleSwipe() {
     if (window.innerWidth >= 768) return;
     const swipeDistance = touchEndX - touchStartX;
-    if (swipeDistance > SWIPE_THRESHOLD && !editorPane.classList.contains('hidden')) {
-        showSidebarMobile();
-    }
+    if (swipeDistance > SWIPE_THRESHOLD && !editorPane.classList.contains('hidden')) showSidebarMobile();
     if (swipeDistance < -SWIPE_THRESHOLD && !sidebar.classList.contains('hidden')) {
-        if (currentEditId || titleInput.value !== '' || dateDisplay.innerText === 'NEW NOTE') {
-            showEditorMobile();
-        }
+        if (currentEditId || titleInput.value !== '' || dateDisplay.innerText === 'NEW NOTE') showEditorMobile();
     }
 }
 
-// Kickoff
-fetchNotes();
+// --- App Kickoff ---
+// Instead of just fetching notes, we check auth first!
+checkAuth();

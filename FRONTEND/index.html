@@ -10,29 +10,48 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        @keyframes slideInRight {
-            from { transform: translateX(100%); }
-            to { transform: translateX(0); }
-        }
-        @keyframes slideInLeft {
-            from { transform: translateX(-30%); }
-            to { transform: translateX(0); }
-        }
+        @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        @keyframes slideInLeft { from { transform: translateX(-30%); } to { transform: translateX(0); } }
         .slide-in-right { animation: slideInRight 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
         .slide-in-left { animation: slideInLeft 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
     </style>
 </head>
 <body class="h-screen w-screen flex overflow-hidden bg-black text-white selection:bg-yellow-500/30">
     
+    <div id="authScreen" class="absolute inset-0 z-50 bg-[#000000] flex flex-col justify-center items-center px-6 transition-opacity duration-300">
+        <div class="w-full max-w-sm">
+            <h1 id="authTitle" class="text-4xl font-bold mb-2 text-center">Welcome back</h1>
+            <p id="authSubtitle" class="text-gray-400 text-center mb-8">Sign in to your private notes</p>
+            
+            <form id="authForm" class="flex flex-col space-y-4">
+                <input type="email" id="emailInput" placeholder="Email" class="w-full bg-[#1c1c1e] text-white px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-yellow-500 transition placeholder-gray-500" required>
+                <input type="password" id="passwordInput" placeholder="Password" class="w-full bg-[#1c1c1e] text-white px-4 py-3 rounded-xl outline-none focus:ring-1 focus:ring-yellow-500 transition placeholder-gray-500" required>
+                
+                <p id="authError" class="text-red-500 text-sm text-center hidden"></p>
+                
+                <button type="submit" id="authSubmitBtn" class="w-full bg-yellow-500 text-black font-bold text-lg py-3 rounded-xl hover:bg-yellow-400 transition mt-2">
+                    Login
+                </button>
+            </form>
+            
+            <p class="text-center text-gray-500 mt-6 text-sm">
+                <span id="authToggleText">Don't have an account?</span> 
+                <button id="authToggleBtn" class="text-yellow-500 hover:text-yellow-400 ml-1 font-medium">Sign up</button>
+            </p>
+        </div>
+    </div>
+
     <aside id="sidebar" class="w-full md:w-80 bg-[#1c1c1e] md:border-r border-[#333336] flex flex-col h-full transition-all duration-200">
-        
         <div class="px-6 py-5 flex justify-between items-center z-10">
             <h1 class="text-3xl font-bold tracking-tight">Notes</h1>
-            <button id="newNoteBtn" class="text-yellow-500 hover:text-yellow-400 transition p-1">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-            </button>
+            <div class="flex space-x-2">
+                <button id="logoutBtn" class="text-gray-500 hover:text-red-500 transition p-1" title="Logout">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                </button>
+                <button id="newNoteBtn" class="text-yellow-500 hover:text-yellow-400 transition p-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                </button>
+            </div>
         </div>
 
         <div class="px-4 pb-3">
@@ -42,43 +61,31 @@
             </div>
         </div>
         
-        <div id="notesList" class="flex-1 overflow-y-auto px-3 pb-3 space-y-1 mt-2 no-scrollbar">
-            </div>
+        <div id="notesList" class="flex-1 overflow-y-auto px-3 pb-3 space-y-1 mt-2 no-scrollbar"></div>
     </aside>
 
     <main id="editorPane" class="w-full flex-1 hidden md:flex flex-col h-full bg-black relative">
         <form id="noteForm" class="flex flex-col h-full w-full">
-            
             <div class="px-6 py-4 flex justify-between items-center min-h-[72px]">
                 <button type="button" id="backBtn" class="md:hidden text-yellow-500 hover:text-yellow-400 flex items-center text-lg font-medium transition">
-                    <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                    Notes
+                    <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg> Notes
                 </button>
-                
                 <div class="hidden md:block flex-1"></div>
-                
                 <div class="flex justify-end items-center space-x-6">
                     <button type="button" id="deleteBtn" class="hidden text-gray-500 hover:text-red-500 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
-                    <button type="submit" id="saveBtn" class="text-yellow-500 font-semibold hover:text-yellow-400 transition text-lg tracking-wide hidden md:block">
-                        Done
-                    </button>
+                    <button type="submit" id="saveBtn" class="text-yellow-500 font-semibold hover:text-yellow-400 transition text-lg tracking-wide hidden md:block">Done</button>
                 </div>
             </div>
 
             <div class="flex-1 flex flex-col px-6 md:px-12 lg:px-16 pb-6 w-full max-h-full overflow-hidden">
-                
                 <div class="flex justify-between items-center text-xs text-gray-500 mb-4 font-medium tracking-wider uppercase">
                     <p id="dateDisplay"></p>
                     <p id="statusDisplay" class="text-yellow-600/80 transition-opacity duration-300 opacity-0">All changes saved</p>
                 </div>
-                
                 <input type="text" id="titleInput" placeholder="Title" class="text-3xl md:text-4xl font-bold mb-4 pb-2 leading-normal overflow-visible outline-none bg-transparent text-white w-full placeholder-gray-600" required autocomplete="off">                
                 <textarea id="documentInput" placeholder="Start typing..." class="flex-1 resize-none outline-none bg-transparent text-lg md:text-xl text-gray-300 w-full leading-relaxed placeholder-gray-600 no-scrollbar" required></textarea>
-                
                 <div class="mt-4 flex justify-end">
                     <span id="wordCountDisplay" class="text-xs text-gray-600 font-medium">0 words</span>
                 </div>

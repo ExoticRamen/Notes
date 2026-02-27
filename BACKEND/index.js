@@ -4,10 +4,12 @@ const express = require('express');
 const app = express();
 const mongoose = require('mongoose');
 const noteRoute = require('./routes/notes.routes.js');
+const authRoute = require('./routes/auth.routes.js');
 
 app.use(cors());
 app.use(express.json());
 app.use('/api/notes', noteRoute);
+app.use('/api/auth', authRoute);
 
 
 mongoose.connect(process.env.MONGO_URI)
